@@ -1,0 +1,78 @@
+/**/controller_manager:
+  ros__parameters:
+    update_rate: 60 # Hz
+
+    joint_trajectory_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+    gripper_controller:
+      type: position_controllers/GripperActionController
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+/**/joint_trajectory_controller:
+  ros__parameters:
+    joints:
+      - $(var tf_prefix)joint_1
+      - $(var tf_prefix)joint_2
+      - $(var tf_prefix)joint_3
+      - $(var tf_prefix)joint_4
+      - $(var tf_prefix)joint_5
+      - $(var tf_prefix)joint_6
+    command_interfaces:
+      - position
+      - velocity
+    state_interfaces:
+      - position
+      - velocity
+
+    action_monitor_rate: 20.0
+    allow_partial_joints_goal: false
+    allow_nonzero_velocity_at_trajectory_end: true
+    constraints:
+      stopped_velocity_tolerance: 0.02
+      goal_time: 0.0
+      # trajectory: 0.0 disables path tolerance check — prevents ragdoll when
+      # the arm presses against an obstacle and joints deviate from the commanded
+      # trajectory. Hardware config keeps 0.2 for safety.
+      $(var tf_prefix)joint_1: { trajectory: 0.0, goal: 0.02 }
+      $(var tf_prefix)joint_2: { trajectory: 0.0, goal: 0.02 }
+      $(var tf_prefix)joint_3: { trajectory: 0.0, goal: 0.02 }
+      $(var tf_prefix)joint_4: { trajectory: 0.0, goal: 0.02 }
+      $(var tf_prefix)joint_5: { trajectory: 0.0, goal: 0.02 }
+      $(var tf_prefix)joint_6: { trajectory: 0.0, goal: 0.02 }
+
+    # gains and velocity_ff are only active when command_interfaces is velocity-only.
+    # With position+velocity interfaces, the physics engine handles joint control
+    # directly — these values are unused but kept here for reference if velocity
+    # mode is ever needed.
+    gains:
+      $(var tf_prefix)joint_1: { p: 5.0, d: 0.5, i: 0.0, i_clamp: 0.0 }
+      $(var tf_prefix)joint_2: { p: 5.0, d: 0.5, i: 0.0, i_clamp: 0.0 }
+      $(var tf_prefix)joint_3: { p: 5.0, d: 0.5, i: 0.0, i_clamp: 0.0 }
+      $(var tf_prefix)joint_4: { p: 5.0, d: 0.5, i: 0.0, i_clamp: 0.0 }
+      $(var tf_prefix)joint_5: { p: 5.0, d: 1.0, i: 0.0, i_clamp: 0.0 }
+      $(var tf_prefix)joint_6: { p: 3.0, d: 2.0, i: 0.0, i_clamp: 0.0 }
+
+    velocity_ff:
+      $(var tf_prefix)joint_1: 1.0
+      $(var tf_prefix)joint_2: 1.0
+      $(var tf_prefix)joint_3: 1.0
+      $(var tf_prefix)joint_4: 1.0
+      $(var tf_prefix)joint_5: 1.0
+      $(var tf_prefix)joint_6: 1.0
+
+/**/gripper_controller:
+  ros__parameters:
+    joint: $(var tf_prefix)gripper_jaw1_joint
+    # goal_tolerance: how close to target before declaring success.
+    # Kept small so the controller keeps pressing toward 0 even when the
+    # block stops the jaw at ~11 mm — maintaining constant grip pressure.
+    goal_tolerance: 0.002
+    # max_effort: forwarded to hardware if an effort interface is present.
+    # With position-only interface Gazebo uses its own joint PD, but this
+    # value is still passed through for future hardware compatibility.
+    max_effort: 200.0
+    stall_velocity_threshold: 0.001
+    stall_timeout: 1.0

@@ -1,0 +1,7 @@
+<library path="ar4_my_planners_plugin">
+  <class name="ar4_my_planners/MyPlanner"
+         type="ar4_my_planners::MyPlannerManager"
+         base_class_type="planning_interface::PlannerManager">
+    <description>AR4 empty planner (start-to-goal interpolation)</description>
+  </class>
+</library>

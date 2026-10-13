@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot xmlns:xacro="http://wiki.ros.org/xacro">
+  <xacro:macro name="ar_gripper" params="
+    tf_prefix
+    parent
+  ">
+
+    <joint name="${tf_prefix}gripper_base_joint" type="fixed">
+      <origin xyz="0.0 0.0 0.0" rpy="-1.5708 0.0 0.0"/>
+      <parent link="${parent}"/>
+      <child link="${tf_prefix}gripper_base_link"/>
+    </joint>
+
+    <link name="${tf_prefix}gripper_base_link">
+      <visual>
+        <geometry>
+          <mesh filename="file://$(find annin_ar4_description)/meshes/ar4_gripper/gripper_base_link.stl" />
+        </geometry>
+        <material name="">
+          <color rgba="0.627 0.627 0.627 1.0"/>
+        </material>
+      </visual>
+      <!-- Rear mounting body (Y = +0.001 to +0.019). -->
+      <collision>
+        <origin xyz="0 0.010 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.060 0.018 0.045"/>
+        </geometry>
+      </collision>
+      <!-- Palm body (Y = -0.024 to 0).  Covers the open palm mesh area that objects
+           previously clipped into silently.  At normal grasping height the palm sits
+           ~35 mm above the top of a 22 mm block, so this box never contacts objects
+           during a correct approach — it only fires if the arm descends too far.
+           Gazebo contact on this link is soft (see below) so any contact produces a
+           gentle corrective force rather than an impulse that destabilises joints 5/6. -->
+      <collision>
+        <origin xyz="0 -0.012 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.054 0.024 0.042"/>
+        </geometry>
+      </collision>
+      <!-- Gateway lip (Y = -0.022 to -0.038): bridges the 9 mm gap between the palm
+           box and the jaw collision tops, creating a continuous barrier so objects
+           cannot slip into the palm cavity and become lodged. -->
+      <collision>
+        <origin xyz="0 -0.030 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.040 0.016 0.034"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <origin xyz="-0.00073621 -0.02341392 -0.00435302"/>
+        <mass value="0.08"/>
+        <inertia ixx="0.00002375" ixy="0.00000002" ixz="-0.00000017" iyy="0.00004082" iyz="-0.00000029" izz="0.00004254"/>
+      </inertial>
+    </link>
+    <link name="${tf_prefix}gripper_jaw1_link">
+      <visual>
+        <geometry>
+          <mesh filename="file://$(find annin_ar4_description)/meshes/ar4_gripper/gripper_jaw1_link.stl" />
+        </geometry>
+        <material name="">
+          <color rgba="0.078 0.078 0.078 1.0"/>
+        </material>
+      </visual>
+      <!-- Main jaw body.  Inner grasping face stays at X ≈ 0 (unchanged from
+           the original 9mm box).  The body is extended OUTWARD from that face
+           to 18mm — doubling the wall thickness so a block flung by a corner
+           contact cannot tunnel through in a single physics step.  This mirrors
+           the plank collision strategy (thick box, solid geometry).
+           Jaw Y shortened from 0.032 to 0.028 (nose pulled back 4 mm): the
+           catch-ledge at the jaw tip is smaller, so a slightly rotated block
+           corner is less likely to wedge.  Gateway-lip overlap increases from
+           5.5 mm to 13.5 mm so no gap opens at the back of the jaw. -->
+      <collision>
+        <origin xyz="-0.00914 -0.0115 -0.0013" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.018 0.028 0.034"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <origin xyz="-0.00435839 -0.00469536 0.00757141"/>
+        <mass value="0.01"/>
+        <inertia ixx="0.00000123" ixy="-0.00000004" ixz="0.00000012" iyy="0.00000115" iyz="0.00000016" izz="0.00000102"/>
+      </inertial>
+    </link>
+    <link name="${tf_prefix}gripper_jaw2_link">
+      <visual>
+        <geometry>
+          <mesh filename="file://$(find annin_ar4_description)/meshes/ar4_gripper/gripper_jaw2_link.stl" />
+        </geometry>
+        <material name="">
+          <color rgba="0.078 0.078 0.078 1.0"/>
+        </material>
+      </visual>
+      <!-- Main jaw body — mirrors jaw1.  Inner face stays at base-frame X ≈ 0;
+           extended outward (local -X direction, which is base +X due to the
+           π-around-Y rotation) to 18mm for anti-tunneling.
+           Y shortened to 0.028 to match jaw1 nose-length reduction. -->
+      <collision>
+        <origin xyz="-0.00874 -0.0115 0.0001" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.018 0.028 0.032"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <origin xyz="-0.00423971 -0.00491236 0.00814582"/>
+        <mass value="0.01"/>
+        <inertia ixx="0.00000118" ixy="-0.00000004" ixz="0.00000013" iyy="0.00000110" iyz="0.00000013" izz="0.00000101"/>
+      </inertial>
+    </link>
+
+    <joint name="${tf_prefix}gripper_jaw1_joint" type="prismatic">
+      <origin xyz="0.0 -0.036 0" rpy="0.0 0.0 0.0"/>
+      <parent link="${tf_prefix}gripper_base_link"/>
+      <child link="${tf_prefix}gripper_jaw1_link"/>
+      <axis xyz="-1 0 0"/>
+      <limit lower="0" upper="0.014" effort="-1" velocity="1.0"/>
+    </joint>
+
+    <joint name="${tf_prefix}gripper_jaw2_joint" type="prismatic">
+      <origin xyz="0.0 -0.036 0" rpy="0.0 ${-pi} 0.0"/>
+      <parent link="${tf_prefix}gripper_base_link"/>
+      <child link="${tf_prefix}gripper_jaw2_link"/>
+      <axis xyz="-1 0 0"/>
+      <limit lower="0" upper="0.014" effort="1000" velocity="1.0"/>
+      <mimic joint="${tf_prefix}gripper_jaw1_joint" multiplier="1" offset="0"/>
+    </joint>
+
+    <!-- Soft, nearly frictionless contact on the gripper base: kp=5000 keeps corrective
+         forces gentle; mu≈0 means objects that touch the palm/lip slide away rather
+         than sticking and becoming lodged. -->
+    <gazebo reference="${tf_prefix}gripper_base_link">
+      <mu1>0.05</mu1>
+      <mu2>0.05</mu2>
+      <kp>5000</kp>
+      <kd>100</kd>
+      <maxVel>0.3</maxVel>
+      <minDepth>0.003</minDepth>
+    </gazebo>
+
+    <!-- High friction on jaw surfaces so objects don't slip or ragdoll on contact.
+         kp/kd matched to block surfaces (100000/50) so the combined ODE stiffness
+         is symmetric — asymmetric stiffness causes contact-induced rotation.
+         kp lowered from 200000 to 100000: combined stiffness is 50000 N/m, still
+         firm (50 N at 1 mm penetration, 150 N friction per jaw >> 0.3 N gravity),
+         but peak contact impulses are halved, keeping the kinematic chain stable.
+         mu raised to 3.0 (rubber-tipped jaws) to compensate for the lower kp. -->
+    <gazebo reference="${tf_prefix}gripper_jaw1_link">
+      <mu1>3.0</mu1>
+      <mu2>3.0</mu2>
+      <kp>100000</kp>
+      <kd>50</kd>
+      <maxVel>0.01</maxVel>
+      <minDepth>0.001</minDepth>
+    </gazebo>
+    <gazebo reference="${tf_prefix}gripper_jaw2_link">
+      <mu1>3.0</mu1>
+      <mu2>3.0</mu2>
+      <kp>100000</kp>
+      <kd>50</kd>
+      <maxVel>0.01</maxVel>
+      <minDepth>0.001</minDepth>
+    </gazebo>
+
+  </xacro:macro>
+</robot>

@@ -1,0 +1,30 @@
+# colcon
+build/
+install/
+log/
+
+# 文档（本地保留，不入库）
+docs/
+
+# 实验运行日志与数据（可由 bench 脚本重新生成）；图片 *.png 保留供 README 引用
+bench/log
+*.log
+bench/*.csv
+bench/*.json
+
+# Python
+__pycache__/
+*.pyc
+
+# 编辑器 / 工具
+.vscode/
+.claude/
+.idea/
+*.swp
+.DS_Store
+
+# C++ 构建产物
+*.o
+*.so
+*.a
+compile_commands.json

@@ -1,0 +1,125 @@
+<?xml version="1.0"?>
+<sdf version="1.9">
+  <!--
+    Furinno Hermite desk-top organizing shelf — geometry-matched twin (AURA-753),
+    rebuilt against the product photo (2026-07-09):
+
+      - stands on the two SIDE PANELS (no bottom board; open gap under the low shelf)
+      - TWO shelf boards + the usable TOP surface
+      - a CENTER DIVIDER splits only the LOWER tier into two cubbies and runs
+        floor -> underside of the middle shelf (it is also the middle leg)
+      - grey oak (French Oak Grey), 10 mm panels (project decision; caliper on arrival)
+
+    Frame: X = width (0.417), Y = depth (0.198), Z = height (0.235 = 9.25 in, user-confirmed), origin at the
+    base (table surface). Open FRONT (+Y, robot side) and BACK. Vertical layout
+    (estimated from the photo — verify against the physical unit):
+      floor gap:      0      .. 0.055   (55 mm, under the low shelf)
+      low shelf:      0.055  .. 0.065   (surface 0.065; split L/R by the divider)
+      lower cubbies:  0.065  .. 0.125   (60 mm clear — TIGHT for insertion)
+      middle shelf:   0.125  .. 0.135   (surface 0.135)
+      upper tier:     0.135  .. 0.225   (90 mm clear, full 0.397 width)
+      top panel:      0.225  .. 0.235   (top surface 0.235 — open-air placement)
+
+    Placement surfaces at the standard site pose (0.30, -0.45, -0.04), world z:
+      lower cubbies (left/right): +0.025
+      upper tier:                 +0.095
+      top surface:                +0.195
+    NOTE: ar4_teleop ACM allow-list must be made spec-driven when wiring this in.
+  -->
+  <model name="furinno_shelf">
+    <static>true</static>
+    <link name="link">
+
+      <collision name="side_l_col">
+        <pose>-0.2035 0 0.1175 0 0 0</pose>
+        <geometry><box><size>0.010 0.198 0.235</size></box></geometry>
+        <surface><contact><collide_bitmask>0x0001</collide_bitmask></contact></surface>
+      </collision>
+      <visual name="side_l_vis">
+        <pose>-0.2035 0 0.1175 0 0 0</pose>
+        <geometry><box><size>0.010 0.198 0.235</size></box></geometry>
+        <material>
+          <ambient>0.45 0.44 0.42 1</ambient>
+          <diffuse>0.58 0.56 0.53 1</diffuse>
+          <specular>0.12 0.12 0.12 1</specular>
+        </material>
+      </visual>
+
+      <collision name="side_r_col">
+        <pose>0.2035 0 0.1175 0 0 0</pose>
+        <geometry><box><size>0.010 0.198 0.235</size></box></geometry>
+        <surface><contact><collide_bitmask>0x0001</collide_bitmask></contact></surface>
+      </collision>
+      <visual name="side_r_vis">
+        <pose>0.2035 0 0.1175 0 0 0</pose>
+        <geometry><box><size>0.010 0.198 0.235</size></box></geometry>
+        <material>
+          <ambient>0.45 0.44 0.42 1</ambient>
+          <diffuse>0.58 0.56 0.53 1</diffuse>
+          <specular>0.12 0.12 0.12 1</specular>
+        </material>
+      </visual>
+
+      <collision name="top_col">
+        <pose>0 0 0.230 0 0 0</pose>
+        <geometry><box><size>0.417 0.198 0.010</size></box></geometry>
+        <surface><contact><collide_bitmask>0x0001</collide_bitmask></contact></surface>
+      </collision>
+      <visual name="top_vis">
+        <pose>0 0 0.230 0 0 0</pose>
+        <geometry><box><size>0.417 0.198 0.010</size></box></geometry>
+        <material>
+          <ambient>0.45 0.44 0.42 1</ambient>
+          <diffuse>0.58 0.56 0.53 1</diffuse>
+          <specular>0.12 0.12 0.12 1</specular>
+        </material>
+      </visual>
+
+      <collision name="mid_shelf_col">
+        <pose>0 0 0.130 0 0 0</pose>
+        <geometry><box><size>0.397 0.198 0.010</size></box></geometry>
+        <surface><contact><collide_bitmask>0x0001</collide_bitmask></contact></surface>
+      </collision>
+      <visual name="mid_shelf_vis">
+        <pose>0 0 0.130 0 0 0</pose>
+        <geometry><box><size>0.397 0.198 0.010</size></box></geometry>
+        <material>
+          <ambient>0.45 0.44 0.42 1</ambient>
+          <diffuse>0.58 0.56 0.53 1</diffuse>
+          <specular>0.12 0.12 0.12 1</specular>
+        </material>
+      </visual>
+
+      <collision name="low_shelf_col">
+        <pose>0 0 0.060 0 0 0</pose>
+        <geometry><box><size>0.397 0.198 0.010</size></box></geometry>
+        <surface><contact><collide_bitmask>0x0001</collide_bitmask></contact></surface>
+      </collision>
+      <visual name="low_shelf_vis">
+        <pose>0 0 0.060 0 0 0</pose>
+        <geometry><box><size>0.397 0.198 0.010</size></box></geometry>
+        <material>
+          <ambient>0.45 0.44 0.42 1</ambient>
+          <diffuse>0.58 0.56 0.53 1</diffuse>
+          <specular>0.12 0.12 0.12 1</specular>
+        </material>
+      </visual>
+
+      <collision name="divider_col">
+        <pose>0 0 0.0625 0 0 0</pose>
+        <geometry><box><size>0.010 0.198 0.125</size></box></geometry>
+        <surface><contact><collide_bitmask>0x0001</collide_bitmask></contact></surface>
+      </collision>
+      <visual name="divider_vis">
+        <pose>0 0 0.0625 0 0 0</pose>
+        <geometry><box><size>0.010 0.198 0.125</size></box></geometry>
+        <material>
+          <ambient>0.45 0.44 0.42 1</ambient>
+          <diffuse>0.58 0.56 0.53 1</diffuse>
+          <specular>0.12 0.12 0.12 1</specular>
+        </material>
+      </visual>
+
+    </link>
+  </model>
+</sdf>

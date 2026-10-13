@@ -1,0 +1,16 @@
+use_overcurrent_protection: true
+
+# Servo angle configuration (in degrees)
+# Retuned live on the real gripper (2026-07-24) after swapping to a Hiwonder
+# HPS-3518SG coreless servo. Its horn indexes differently from the previous
+# servo, so both ends moved:
+#   closed 15 -> 0 : 0 is the firmware's servo.write() floor; the jaws close to
+#                    a small residual gap here and going lower is impossible, not
+#                    just strained. A hair of gap beats stalling into the linkage.
+#   open   63 -> 55: at 63 the jaws over-drove into their open stop. 60 looked
+#                    clean cold, but after a work session it drew ~1.9 A resting
+#                    at 60 (straining near the stop as the coreless servo warmed)
+#                    while 55 rests at ~0.7 A. 55 opens wide with real margin off
+#                    the stop and keeps the servo cool at its rest position.
+closed_servo_angle: 0
+open_servo_angle: 55

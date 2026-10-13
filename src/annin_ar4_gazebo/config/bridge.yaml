@@ -1,0 +1,46 @@
+# ros_gz_bridge config for the AR4 Gazebo simulation.
+#
+# The camera topics are published with RELIABLE QoS so that rqt_image_view,
+# image_transport, and our recording node can subscribe without a QoS mismatch
+# (the default Gazebo bridge uses BEST_EFFORT for sensors, which rqt silently
+# drops, causing the grey-screen symptom).
+
+- ros_topic_name: "/clock"
+  gz_topic_name: "/clock"
+  ros_type_name: "rosgraph_msgs/msg/Clock"
+  gz_type_name: "ignition.msgs.Clock"
+  direction: GZ_TO_ROS
+
+- ros_topic_name: "/wrist_camera/image"
+  gz_topic_name: "/wrist_camera/image"
+  ros_type_name: "sensor_msgs/msg/Image"
+  gz_type_name: "gz.msgs.Image"
+  direction: GZ_TO_ROS
+  qos:
+    reliability: RELIABLE
+    durability: VOLATILE
+    history: KEEP_LAST
+    depth: 1
+
+- ros_topic_name: "/wrist_camera/camera_info"
+  gz_topic_name: "/wrist_camera/camera_info"
+  ros_type_name: "sensor_msgs/msg/CameraInfo"
+  gz_type_name: "gz.msgs.CameraInfo"
+  direction: GZ_TO_ROS
+  qos:
+    reliability: RELIABLE
+    durability: VOLATILE
+    history: KEEP_LAST
+    depth: 1
+
+# Axis-style third-person scene camera (wall-mounted, to the side of the arm).
+- ros_topic_name: "/scene_camera/image"
+  gz_topic_name: "/scene_camera/image"
+  ros_type_name: "sensor_msgs/msg/Image"
+  gz_type_name: "gz.msgs.Image"
+  direction: GZ_TO_ROS
+  qos:
+    reliability: RELIABLE
+    durability: VOLATILE
+    history: KEEP_LAST
+    depth: 1
