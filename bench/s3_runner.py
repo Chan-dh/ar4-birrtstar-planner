@@ -214,6 +214,25 @@ class Runner(S3Client):
 
     def plan(self, start, goal, planner, group, timeout, attempts=1):
         """planner 参数是 PLANNERS 的 label（如 "mine/BiRRTStar"）。"""
+        res, t_req = self.plan_raw(start, goal, planner, group, timeout, attempts)
+        if res is None:
+            return {"success": False, "planning_time": timeout, "path_length": 0.0,
+                    "num_waypoints": 0, "error_code": "NO_RESPONSE",
+                    "t_request": round(t_req, 3)}
+
+        r = res.motion_plan_response
+        ok = r.error_code.val == 1  # SUCCESS
+        return {
+            "success": ok,
+            "planning_time": round(r.planning_time, 4),
+            "path_length": round(path_length(r.trajectory), 4) if ok else 0.0,
+            "num_waypoints": len(r.trajectory.joint_trajectory.points) if ok else 0,
+            "error_code": r.error_code.val,
+            "t_request": round(t_req, 3),
+        }
+
+    def plan_raw(self, start, goal, planner, group, timeout, attempts=1):
+        """发请求并返回 (GetMotionPlan.Response | None, t_request)。demo_viz.py 要完整轨迹，复用这里。"""
         if planner not in PLANNERS:
             raise KeyError(f"未知 planner label: {planner!r}，可选: {sorted(PLANNERS)}")
         pipeline_id, planner_id = PLANNERS[planner]
@@ -255,22 +274,7 @@ class Runner(S3Client):
         fut = self.plan_cli.call_async(req)
         # 服务调用的等待上限要宽于 planner 自己的超时
         rclpy.spin_until_future_complete(self, fut, timeout_sec=timeout + 30.0)
-        res = fut.result()
-        if res is None:
-            return {"success": False, "planning_time": timeout, "path_length": 0.0,
-                    "num_waypoints": 0, "error_code": "NO_RESPONSE",
-                    "t_request": round(t_req, 3)}
-
-        r = res.motion_plan_response
-        ok = r.error_code.val == 1  # SUCCESS
-        return {
-            "success": ok,
-            "planning_time": round(r.planning_time, 4),
-            "path_length": round(path_length(r.trajectory), 4) if ok else 0.0,
-            "num_waypoints": len(r.trajectory.joint_trajectory.points) if ok else 0,
-            "error_code": r.error_code.val,
-            "t_request": round(t_req, 3),
-        }
+        return fut.result(), t_req
 
 
 def load_queries(path):

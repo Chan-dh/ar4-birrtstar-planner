@@ -10,10 +10,12 @@
  *   narrow   窄通道（验证双树连接）
  *   circles  对角线上大小不一的圆阵（验证绕行多个凸障碍）
  *
- * 用法：birrtstar_2d [scenario] [time_limit_s] [out_dir]
+ * 用法：birrtstar_2d [scenario] [time_limit_s] [out_dir] [snapshots]
  *   scenario ∈ {free, obstacle, narrow, circles}，默认 free
  *   time_limit_s 默认 2.0
  *   out_dir   默认当前目录，写 <scenario>_trees.txt
+ *   snapshots 默认 0。>0 时把 solve 拆成这么多段，每段末尾导出一帧到
+ *             <scenario>_frames.txt（供 bench/animate_birrtstar_2d.py 做动图）
  *
  * 自检项（stage_1_ompl_3.md §5 Phase B 验收）：
  *   [S1] 返回精确解
@@ -32,6 +34,7 @@ colcon build --packages-select ar4_my_planners
 python3 bench/plot_birrtstar_trees.py circles /tmp
  *********************************************************************/
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstdio>
@@ -49,6 +52,7 @@ python3 bench/plot_birrtstar_trees.py circles /tmp
 #include <ompl/base/spaces/RealVectorStateSpace.h>
 #include <ompl/base/PlannerTerminationCondition.h>
 #include <ompl/geometric/PathGeometric.h>
+#include <ompl/util/Console.h>
 
 #include "ar4_my_planners/birrtstar.hpp"
 
@@ -122,6 +126,32 @@ void check(bool ok, const char *label, const char *detail = "")
     if (!ok)
         ++g_checksFailed;
 }
+
+// 树/路径导出（§7.2）：V/E 带 tag（1=起点树 2=目标树），P 为路径（可为空）
+void writeTrees(FILE *f, const ompl::base::PlannerData &pdata, const std::vector<ompl::base::State *> &path)
+{
+    for (unsigned int i = 0; i < pdata.numVertices(); ++i)
+    {
+        // v 是第 i 个顶点
+        const ompl::base::PlannerDataVertex &v = pdata.getVertex(i);
+        // state （x，y）
+        const auto *s = v.getState()->as<ompl::base::RealVectorStateSpace::StateType>();
+        // V  节点ID  x  y  tag
+        std::fprintf(f, "V %u %f %f %d\n", i, s->values[0], s->values[1], v.getTag());
+        std::vector<unsigned int> edgeList;
+        // 这个节点的 Edge list
+        pdata.getEdges(i, edgeList);
+        for (unsigned int j : edgeList)
+            // E  节点ID  子节点ID  tag
+            std::fprintf(f, "E %u %u %d\n", i, j, v.getTag());
+    }
+    for (const auto *st : path)
+    {
+        // P  x  y
+        const auto *s = st->as<ompl::base::RealVectorStateSpace::StateType>();
+        std::fprintf(f, "P %f %f\n", s->values[0], s->values[1]);
+    }
+}
 }  // namespace
 
 int main(int argc, char **argv)
@@ -129,6 +159,7 @@ int main(int argc, char **argv)
     const char *scenarioName = argc > 1 ? argv[1] : "free";
     const double timeLimit = argc > 2 ? std::atof(argv[2]) : 2.0;
     const std::string outDir = argc > 3 ? argv[3] : ".";
+    const int snapshots = argc > 4 ? std::atoi(argv[4]) : 0;
 
     const Scenario *sc = nullptr;
     for (const auto &candidate : scenarios())
@@ -164,8 +195,9 @@ int main(int argc, char **argv)
     // ── 首解时间戳 + c_best 严格递减断言（§4.2 / §7.3）──────────────
     // 中间解回调是唯一出口：首解时间、c_best 事件流、anytime 曲线共用它
     const auto t0 = std::chrono::steady_clock::now();
-    auto elapsed = [&t0] {
-        return std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+    double pausedTime = 0.0;  // 快照导出耗时，不计入规划时间
+    auto elapsed = [&t0, &pausedTime] {
+        return std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count() - pausedTime;
     };
 
     double tFirstSolution = -1.0;
@@ -195,10 +227,52 @@ int main(int argc, char **argv)
     planner->setProblemDefinition(pdef);
     planner->setup();
 
+    double deadline = timeLimit;
     const ompl::base::PlannerTerminationCondition ptc(
-        [&elapsed, timeLimit] { return elapsed() >= timeLimit; });
+        [&elapsed, &deadline] { return elapsed() >= deadline; });
 
-    const ompl::base::PlannerStatus status = planner->solve(ptc);
+    ompl::base::PlannerStatus status;
+    if (snapshots <= 0)
+    {
+        status = planner->solve(ptc);
+    }
+    else
+    {
+        // ── 快照模式：分段 solve ─────────────────────────────────────
+        // 两棵树、bestCost_、expandStartFirst_ 都是成员，solve() 可重入：
+        // 起点不会重复入树（pis_ 只吐新起点），目标树已有根就不再阻塞取根。
+        // 分段与一次跑完的唯一差别是每段末尾多一次 considerConnection 冲刷（只在严格变优时生效）。
+        ompl::msg::setLogLevel(ompl::msg::LOG_WARN);  // 每段 solve 都会打一行 INFORM
+        const std::string framesFile = outDir + "/" + sc->name + "_frames.txt";
+        FILE *ff = std::fopen(framesFile.c_str(), "w");
+        if (ff == nullptr)
+        {
+            std::fprintf(stderr, "cannot open %s for writing\n", framesFile.c_str());
+            return 2;
+        }
+        // 几何间隔：早期帧密（看两棵树长出来、汇合），后期帧疏（看 rewire 收敛）
+        const double tMin = std::min(1e-3, timeLimit);
+        for (int k = 0; k < snapshots; ++k)
+        {
+            deadline = snapshots == 1 ? timeLimit
+                                      : tMin * std::pow(timeLimit / tMin, static_cast<double>(k) / (snapshots - 1));
+            status = planner->solve(ptc);
+            const double tSnap = elapsed();
+
+            const auto pauseStart = std::chrono::steady_clock::now();
+            ompl::base::PlannerData pdata(si);
+            planner->getPlannerData(pdata);
+            std::vector<ompl::base::State *> snapPath;
+            if (pdef->hasExactSolution())
+                snapPath = pdef->getSolutionPath()->as<ompl::geometric::PathGeometric>()->getStates();
+            // F  帧号  规划时间  c_best（未汇合时为 inf）  迭代数
+            std::fprintf(ff, "F %d %f %f %u\n", k, tSnap, planner->bestCost().value(), planner->numIterations());
+            writeTrees(ff, pdata, snapPath);
+            pausedTime += std::chrono::duration<double>(std::chrono::steady_clock::now() - pauseStart).count();
+        }
+        std::fclose(ff);
+        std::fprintf(stdout, "exported %d frames to %s\n", snapshots, framesFile.c_str());
+    }
     const double planningTime = elapsed();
 
     // ── 结果汇总 ────────────────────────────────────────────────────
@@ -261,28 +335,7 @@ int main(int argc, char **argv)
         const std::string treesFile = outDir + "/" + sc->name + "_trees.txt";
         if (FILE *tf = std::fopen(treesFile.c_str(), "w"))
         {
-            for (unsigned int i = 0; i < pdata.numVertices(); ++i)
-            {
-                // v 是第 i 个顶点
-                const ompl::base::PlannerDataVertex &v = pdata.getVertex(i);
-                // state （x，y）
-                const auto *s = v.getState()->as<ompl::base::RealVectorStateSpace::StateType>();
-                // V  节点ID  x  y  tag
-                std::fprintf(tf, "V %u %f %f %d\n", i, s->values[0], s->values[1], v.getTag());
-                std::vector<unsigned int> edgeList;
-                // 这个节点的 Edge list
-                pdata.getEdges(i, edgeList);
-                for (unsigned int j : edgeList)
-                    // E  节点ID  子节点ID  tag
-                    std::fprintf(tf, "E %u %u %d\n", i, j, v.getTag());
-            }
-            // 
-            for (const auto *st : states)
-            {
-                // P  x  y
-                const auto *s = st->as<ompl::base::RealVectorStateSpace::StateType>();
-                std::fprintf(tf, "P %f %f\n", s->values[0], s->values[1]);
-            }
+            writeTrees(tf, pdata, states);
             std::fclose(tf);
             std::fprintf(stdout, "exported %u vertices to %s\n", pdata.numVertices(), treesFile.c_str());
         }

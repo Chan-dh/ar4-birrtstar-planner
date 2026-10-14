@@ -43,6 +43,7 @@ Benchmark 专用 launch —— 基于 annin_ar4_moveit_config/launch/demo.launch
     ros2 launch ./bench.launch.py                        # 跑分用（含夹爪）
     ros2 launch ./bench.launch.py include_gripper:=false # 无夹爪对照组
     ros2 launch ./bench.launch.py use_rviz:=true         # 建场景/肉眼确认
+    ros2 launch ./bench.launch.py use_rviz:=true rviz_config:=$PWD/demo.rviz  # 录演示动画（demo_viz.py）
 """
 
 import os
@@ -74,12 +75,15 @@ def generate_launch_description():
     tf_prefix = LaunchConfiguration("tf_prefix")
     use_rviz = LaunchConfiguration("use_rviz")
     include_gripper = LaunchConfiguration("include_gripper")
+    rviz_config = LaunchConfiguration("rviz_config")
 
     args = [
         DeclareLaunchArgument("ar_model", default_value="mk4",
                               choices=["mk1", "mk2", "mk3", "mk4", "mk5"]),
         DeclareLaunchArgument("tf_prefix", default_value=""),
         DeclareLaunchArgument("use_rviz", default_value="false"),
+        DeclareLaunchArgument("rviz_config", default_value=os.path.join(
+            get_package_share_directory("annin_ar4_moveit_config"), "rviz", "moveit.rviz")),
         DeclareLaunchArgument("include_gripper", default_value="true",
                               choices=["true", "false"],
                               description="夹爪是实验变量，默认带上（更贴近真实作业）"),
@@ -249,9 +253,7 @@ def generate_launch_description():
         name="rviz2",
         output="log",
         condition=IfCondition(use_rviz),
-        arguments=["-d", os.path.join(
-            get_package_share_directory("annin_ar4_moveit_config"),
-            "rviz", "moveit.rviz")],
+        arguments=["-d", rviz_config],
         parameters=[
             robot_description,
             robot_description_semantic,

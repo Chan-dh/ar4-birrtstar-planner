@@ -186,6 +186,11 @@ class S3Client(Node):
 
     def fk_x(self, q, tip, frame_id):
         """返回末端在 frame_id 下的 x 坐标（用来判断在墙的哪一侧）。"""
+        p = self.fk_point(q, tip, frame_id)
+        return None if p is None else p.x
+
+    def fk_point(self, q, tip, frame_id):
+        """返回末端在 frame_id 下的位置（geometry_msgs/Point）。"""
         req = GetPositionFK.Request()
         req.header.frame_id = frame_id
         req.fk_link_names = [tip]
@@ -193,7 +198,7 @@ class S3Client(Node):
         res = self.call(self.fk_cli, req)
         if not res or not res.pose_stamped:
             return None
-        return res.pose_stamped[0].pose.position.x
+        return res.pose_stamped[0].pose.position
 
     def verify(self, gap_w, group, tip, frame_id, n_samples, seed):
         """场景有效性检查：墙两侧是否都存在可达的无碰撞构型。

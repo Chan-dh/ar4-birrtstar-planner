@@ -12,7 +12,9 @@
   <img src="media/demo.gif" width="760" alt="AR4 在 RViz 中穿过窄通道：RRTConnect vs BiRRTStar">
 </p>
 -->
-> 🎬 **演示动画（待补充）**：RViz 中 AR4 穿过 0.23 m 墙洞，RRTConnect 与 BiRRTStar 轨迹并排对比。
+> RViz 中 AR4 穿过 0.23 m 墙洞，RRTConnect 与 BiRRTStar 轨迹并排对比。
+
+![](media/demo.gif)
 
 ## 一眼看结果
 
@@ -369,6 +371,9 @@ BiTRRT 和 STRRT\* 都是双树 + 有 `opt_`，但都没有 cost-to-come；RRT\*
 在 CMake 里做成独立 STATIC target 从构建系统层面强制隔离。
 因此二维 harness（Phase B）与六维 MoveIt 插件（Phase C）**共用同一份算法代码**，
 从二维到六维只替换 state space、validity checker 和 start/goal，算法一字不改。
+
+![](media/circles_trees.png)
+![](media/birrtstar_2d.gif)
 
 ---
 
